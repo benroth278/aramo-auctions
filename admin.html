@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Aramo Admin</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1a1a1a">
+<style>
+  :root {
+    --bg: #f5f7fa; --surface: #fff; --border: #e2e8f0;
+    --text: #1a1a1a; --muted: #64748b; --accent: #1d4ed8;
+    --danger: #dc2626; --ok: #15803d;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif; background: var(--bg); color: var(--text); min-height: 100dvh; padding-bottom: env(safe-area-inset-bottom); }
+
+  header {
+    background: var(--text); color: #fff;
+    padding: 16px 20px;
+    padding-top: calc(16px + env(safe-area-inset-top));
+    display: flex; justify-content: space-between; align-items: center;
+    position: sticky; top: 0; z-index: 50;
+  }
+  header h1 { font-size: 17px; font-weight: 700; }
+  header p { font-size: 11px; opacity: 0.55; margin-top: 1px; }
+  .header-link { color: #fff; font-size: 13px; text-decoration: none; opacity: 0.8; }
+
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  /* PIN */
+  .pin-wrap { display: flex; flex-direction: column; align-items: center; padding: 60px 32px 40px; gap: 24px; }
+  .pin-title { font-size: 22px; font-weight: 700; }
+  .pin-subtitle { font-size: 14px; color: var(--muted); text-align: center; line-height: 1.5; }
+  .pin-dots { display: flex; gap: 12px; margin: 8px 0; }
+  .pin-dot { width: 14px; height: 14px; border-radius: 50%; background: var(--border); transition: background 0.15s; }
+  .pin-dot.filled { background: var(--text); }
+  .pin-keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; width: 100%; max-width: 280px; }
+  .pin-key { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px; font-size: 20px; font-weight: 600; cursor: pointer; text-align: center; user-select: none; }
+  .pin-key:active { background: var(--border); }
+  .pin-key.del { font-size: 16px; color: var(--danger); }
+  .pin-error { color: var(--danger); font-size: 13px; min-height: 18px; }
+
+  /* Setup */
+  .setup-wrap { padding: 24px 20px; display: flex; flex-direction: column; gap: 16px; }
+
+  /* Sections & fields */
+  .section { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  .section-title { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; padding: 12px 16px 8px; }
+  .field { border-top: 1px solid var(--border); }
+  .field:first-of-type { border-top: none; }
+  .field label { display: block; font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; padding: 10px 16px 4px; }
+  .field input, .field select { display: block; width: 100%; padding: 0 16px 12px; border: none; outline: none; background: transparent; font-size: 15px; color: var(--text); font-family: inherit; -webkit-appearance: none; }
+
+  /* Buttons */
+  .btn { display: block; width: 100%; padding: 14px; border: none; border-radius: 12px; font-size: 15px; font-weight: 600; cursor: pointer; font-family: inherit; text-align: center; }
+  .btn-primary { background: var(--text); color: #fff; }
+  .btn-primary:active { opacity: 0.8; }
+  .btn-danger-outline { background: #fef2f2; color: var(--danger); border: 1px solid #fecaca; }
+  .btn:disabled { opacity: 0.4; pointer-events: none; }
+
+  /* Main */
+  .main-wrap { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+
+  /* Auction rows */
+  .auction-item { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 0; }
+  .auction-header { padding: 12px 16px 6px; display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+  .auction-title-text { font-size: 14px; font-weight: 600; line-height: 1.3; flex: 1; }
+  .auction-meta { font-size: 12px; color: var(--muted); padding: 0 16px 10px; }
+  .auction-actions { border-top: 1px solid var(--border); display: flex; }
+  .bid-input-wrap { flex: 1; display: flex; align-items: center; padding: 0 12px; }
+  .bid-input { border: none; outline: none; font-size: 14px; font-weight: 600; background: transparent; width: 100%; font-family: inherit; padding: 10px 0; }
+  .btn-row { display: flex; border-left: 1px solid var(--border); }
+  .btn-sm { padding: 10px 14px; border: none; font-size: 13px; font-weight: 600; cursor: pointer; background: transparent; font-family: inherit; }
+  .btn-sm + .btn-sm { border-left: 1px solid var(--border); }
+  .btn-sm-ok { color: var(--ok); }
+  .btn-sm-danger { color: var(--danger); }
+  .btn-sm:active { background: var(--bg); }
+
+  /* Badge */
+  .badge { flex-shrink: 0; padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+  .badge-Klaravik  { background: #fef3c7; color: #92400e; }
+  .badge-Blinto    { background: #dbeafe; color: #1d4ed8; }
+  .badge-Junora    { background: #f3e8ff; color: #6d28d9; }
+  .badge-Maskinera { background: #dcfce7; color: #15803d; }
+  .badge-Other     { background: #f1f5f9; color: #64748b; }
+
+  .empty-state { text-align: center; padding: 32px; color: var(--muted); font-size: 14px; }
+
+  /* Toast */
+  .toast {
+    position: fixed; bottom: calc(24px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%);
+    background: var(--text); color: #fff; padding: 10px 20px; border-radius: 20px;
+    font-size: 13px; font-weight: 600; z-index: 200; opacity: 0; transition: opacity 0.2s; white-space: nowrap;
+  }
+  .toast.show { opacity: 1; }
+  .toast.err { background: var(--danger); }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Aramo Admin</h1>
+    <p>Auktionshantering</p>
+  </div>
+  <a href="index.html" class="header-link">← Tillbaka</a>
+</header>
+
+<!-- PIN screen -->
+<div class="screen active" id="screen-pin">
+  <div class="pin-wrap">
+    <div style="text-align:center">
+      <div class="pin-title" id="pin-title">Ange PIN</div>
+      <div class="pin-subtitle" id="pin-subtitle">Ange din 4-siffriga PIN-kod</div>
+    </div>
+    <div class="pin-dots" id="pin-dots">
+      <div class="pin-dot" id="d0"></div>
+      <div class="pin-dot" id="d1"></div>
+      <div class="pin-dot" id="d2"></div>
+      <div class="pin-dot" id="d3"></div>
+    </div>
+    <div class="pin-error" id="pin-error"></div>
+    <div class="pin-keypad">
+      <div class="pin-key" onclick="pinKey('1')">1</div>
+      <div class="pin-key" onclick="pinKey('2')">2</div>
+      <div class="pin-key" onclick="pinKey('3')">3</div>
+      <div class="pin-key" onclick="pinKey('4')">4</div>
+      <div class="pin-key" onclick="pinKey('5')">5</div>
+      <div class="pin-key" onclick="pinKey('6')">6</div>
+      <div class="pin-key" onclick="pinKey('7')">7</div>
+      <div class="pin-key" onclick="pinKey('8')">8</div>
+      <div class="pin-key" onclick="pinKey('9')">9</div>
+      <div class="pin-key" style="visibility:hidden"></div>
+      <div class="pin-key" onclick="pinKey('0')">0</div>
+      <div class="pin-key del" onclick="pinDel()">⌫</div>
+    </div>
+  </div>
+</div>
+
+<!-- Setup (first run) -->
+<div class="screen" id="screen-setup">
+  <div class="setup-wrap">
+    <p style="font-size:14px;color:var(--muted);line-height:1.6">Välkommen! Ange din GitHub-token och välj en PIN-kod för att komma igång. Token sparas bara på den här enheten.</p>
+    <div class="section">
+      <div class="section-title">GitHub-token</div>
+      <div class="field">
+        <label>Token</label>
+        <input type="password" id="setup-token" placeholder="ghp_…" autocomplete="off" spellcheck="false">
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-title">Välj PIN-kod</div>
+      <div class="field">
+        <label>4-siffrig PIN</label>
+        <input type="password" id="setup-pin" placeholder="••••" maxlength="4" inputmode="numeric" autocomplete="off">
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="setupSave()">Spara och fortsätt</button>
+  </div>
+</div>
+
+<!-- Main -->
+<div class="screen" id="screen-main">
+  <div class="main-wrap">
+
+    <!-- Add form -->
+    <div class="section">
+      <div class="section-title">Lägg till auktion</div>
+      <div class="field">
+        <label>URL</label>
+        <input type="url" id="add-url" placeholder="https://…" inputmode="url" autocomplete="off" oninput="onUrlInput()">
+      </div>
+      <div class="field">
+        <label>Titel</label>
+        <input type="text" id="add-title" placeholder="Maskinnamn">
+      </div>
+      <div class="field">
+        <label>Ledande bud</label>
+        <input type="text" id="add-bid" placeholder="t.ex. 2 500 kr" inputmode="text">
+      </div>
+      <div class="field">
+        <label>Avslutas</label>
+        <input type="datetime-local" id="add-ends">
+      </div>
+      <div class="field">
+        <label>Plattform</label>
+        <select id="add-platform">
+          <option value="Junora">Junora</option>
+          <option value="Klaravik">Klaravik</option>
+          <option value="Blinto">Blinto</option>
+          <option value="Maskinera">Maskinera</option>
+          <option value="Other">Annan</option>
+        </select>
+      </div>
+      <div style="padding:12px 16px;">
+        <button class="btn btn-primary" id="btn-add" onclick="addAuction()">Lägg till</button>
+      </div>
+    </div>
+
+    <!-- Auction list -->
+    <div class="section-title" style="padding:4px 4px;">Aktiva auktioner</div>
+    <div id="auction-list"><div class="empty-state">Laddar…</div></div>
+
+    <!-- Reset -->
+    <div style="padding:4px 0 0;">
+      <button class="btn btn-danger-outline" onclick="resetSettings()">Återställ inställningar</button>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const OWNER = 'benroth278';
+const REPO  = 'aramo-auctions';
+const FILE  = 'data.json';
+
+// ── Util ─────────────────────────────────────────────────────────────────────
+
+const getToken = () => localStorage.getItem('aramo_token');
+const getPin   = () => localStorage.getItem('aramo_pin');
+
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + id).classList.add('active');
+}
+
+let _toastTimer;
+function toast(msg, isErr = false) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show' + (isErr ? ' err' : '');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
+}
+
+function detectPlatform(url) {
+  if (/klaravik/.test(url))  return 'Klaravik';
+  if (/blinto/.test(url))    return 'Blinto';
+  if (/junora/.test(url))    return 'Junora';
+  if (/maskinera/.test(url)) return 'Maskinera';
+  return 'Other';
+}
+
+function fmtDate(iso) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleString('sv-SE', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
+}
+
+// ── PIN ───────────────────────────────────────────────────────────────────────
+
+let pinBuf = '';
+
+function initPin() {
+  if (!getToken() || !getPin()) { show('setup'); return; }
+  show('pin');
+}
+
+function pinKey(k) {
+  if (pinBuf.length >= 4) return;
+  pinBuf += k;
+  updateDots();
+  if (pinBuf.length === 4) setTimeout(checkPin, 120);
+}
+
+function pinDel() {
+  pinBuf = pinBuf.slice(0, -1);
+  updateDots();
+  document.getElementById('pin-error').textContent = '';
+}
+
+function updateDots() {
+  for (let i = 0; i < 4; i++)
+    document.getElementById('d' + i).classList.toggle('filled', i < pinBuf.length);
+}
+
+function checkPin() {
+  if (pinBuf === getPin()) {
+    pinBuf = ''; updateDots();
+    show('main');
+    loadAuctions();
+  } else {
+    document.getElementById('pin-error').textContent = 'Fel PIN, försök igen';
+    pinBuf = ''; updateDots();
+  }
+}
+
+// ── Setup ─────────────────────────────────────────────────────────────────────
+
+function setupSave() {
+  const token = document.getElementById('setup-token').value.trim();
+  const pin   = document.getElementById('setup-pin').value.trim();
+  if (!token) { toast('Ange en GitHub-token', true); return; }
+  if (!/^\d{4}$/.test(pin)) { toast('PIN måste vara 4 siffror', true); return; }
+  localStorage.setItem('aramo_token', token);
+  localStorage.setItem('aramo_pin', pin);
+  show('main');
+  loadAuctions();
+}
+
+function resetSettings() {
+  if (!confirm('Återställ? Du behöver ange token och PIN igen.')) return;
+  localStorage.removeItem('aramo_token');
+  localStorage.removeItem('aramo_pin');
+  location.reload();
+}
+
+// ── GitHub API ────────────────────────────────────────────────────────────────
+
+async function fetchData() {
+  const res = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/contents/${FILE}`, {
+    headers: { Authorization: `token ${getToken()}`, Accept: 'application/vnd.github.v3+json' }
+  });
+  if (!res.ok) throw new Error('GitHub ' + res.status);
+  const meta = await res.json();
+  const data = JSON.parse(atob(meta.content.replace(/\n/g, '')));
+  return { data, sha: meta.sha };
+}
+
+async function pushData(data, sha, message) {
+  const json = JSON.stringify(data, null, 2);
+  // UTF-8 safe base64
+  const content = btoa(unescape(encodeURIComponent(json)));
+  const res = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/contents/${FILE}`, {
+    method: 'PUT',
+    headers: { Authorization: `token ${getToken()}`, Accept: 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message, content, sha })
+  });
+  if (!res.ok) throw new Error('GitHub ' + res.status);
+  const result = await res.json();
+  return result.content.sha; // return new SHA
+}
+
+// ── State ─────────────────────────────────────────────────────────────────────
+
+let currentSha  = null;
+let currentData = null;
+
+async function loadAuctions() {
+  try {
+    const { data, sha } = await fetchData();
+    currentData = data;
+    currentSha  = sha;
+    renderAuctions();
+  } catch (e) {
+    document.getElementById('auction-list').innerHTML = `<div class="empty-state">Fel: ${e.message}</div>`;
+  }
+}
+
+function renderAuctions() {
+  const list     = document.getElementById('auction-list');
+  const auctions = currentData?.auctions || [];
+  if (!auctions.length) {
+    list.innerHTML = '<div class="empty-state">Inga auktioner</div>';
+    return;
+  }
+  list.innerHTML = auctions.map((a, i) => {
+    const p = a.platform || detectPlatform(a.url);
+    return `
+      <div class="auction-item">
+        <div class="auction-header">
+          <span class="auction-title-text">${a.title || a.url}</span>
+          <span class="badge badge-${p}">${p}</span>
+        </div>
+        <div class="auction-meta">Avslutas ${fmtDate(a.endsAtISO)}</div>
+        <div class="auction-actions">
+          <div class="bid-input-wrap">
+            <input class="bid-input" type="text" value="${a.currentBidText || ''}" id="bid-${i}" placeholder="Ledande bud">
+          </div>
+          <div class="btn-row">
+            <button class="btn-sm btn-sm-ok" onclick="updateBid(${i})">Spara</button>
+            <button class="btn-sm btn-sm-danger" onclick="deleteAuction(${i})">Ta bort</button>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+async function updateBid(i) {
+  const newBid = document.getElementById('bid-' + i).value.trim();
+  const title  = currentData.auctions[i].title;
+  currentData.auctions[i].currentBidText = newBid;
+  currentData.auctions[i].currentBidNum  = parseInt(newBid.replace(/\D/g, '')) || 0;
+  currentData.updatedAt = new Date().toISOString();
+  try {
+    currentSha = await pushData(currentData, currentSha, `Update bid: ${title}`);
+    toast('Bud uppdaterat ✓');
+  } catch (e) {
+    toast('Fel: ' + e.message, true);
+    await loadAuctions(); // re-sync
+  }
+}
+
+async function deleteAuction(i) {
+  const title = currentData.auctions[i].title || 'auktionen';
+  if (!confirm(`Ta bort "${title}"?`)) return;
+  currentData.auctions.splice(i, 1);
+  currentData.updatedAt = new Date().toISOString();
+  try {
+    currentSha = await pushData(currentData, currentSha, `Remove: ${title}`);
+    renderAuctions();
+    toast('Borttagen ✓');
+  } catch (e) {
+    toast('Fel: ' + e.message, true);
+    await loadAuctions();
+  }
+}
+
+function onUrlInput() {
+  const url = document.getElementById('add-url').value;
+  document.getElementById('add-platform').value = detectPlatform(url);
+}
+
+async function addAuction() {
+  const url      = document.getElementById('add-url').value.trim();
+  const title    = document.getElementById('add-title').value.trim();
+  const bid      = document.getElementById('add-bid').value.trim();
+  const endsAt   = document.getElementById('add-ends').value;
+  const platform = document.getElementById('add-platform').value;
+
+  if (!url)   { toast('Ange en URL', true); return; }
+  if (!title) { toast('Ange en titel', true); return; }
+
+  const btn = document.getElementById('btn-add');
+  btn.disabled = true; btn.textContent = 'Sparar…';
+
+  const item = {
+    url, title, platform,
+    currentBidText: bid || '0 kr',
+    currentBidNum:  parseInt(bid.replace(/\D/g, '')) || 0,
+    endsAtISO:  endsAt ? new Date(endsAt).toISOString() : null,
+    fetchedAt:  new Date().toISOString()
+  };
+
+  currentData.auctions.push(item);
+  currentData.updatedAt = new Date().toISOString();
+
+  try {
+    currentSha = await pushData(currentData, currentSha, `Add: ${title}`);
+    ['add-url','add-title','add-bid','add-ends'].forEach(id => document.getElementById(id).value = '');
+    renderAuctions();
+    toast('Auktion tillagd ✓');
+  } catch (e) {
+    currentData.auctions.pop(); // roll back
+    toast('Fel: ' + e.message, true);
+  }
+
+  btn.disabled = false; btn.textContent = 'Lägg till';
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+initPin();
+</script>
+</body>
+</html>
