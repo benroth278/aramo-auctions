@@ -2,7 +2,7 @@
   "name": "Aramo Maskin Auktioner",
   "short_name": "Aramo",
   "description": "Live auction tracker for Aramo Maskin",
-  "start_url": "/",
+  "start_url": "/aramo-auctions/",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#f5f7fa",
