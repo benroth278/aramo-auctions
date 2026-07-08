@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Aramo Maskin — Auktioner</title>
+
+<!-- PWA / iOS home screen -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Aramo">
+<meta name="theme-color" content="#1a1a1a">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="manifest" href="manifest.json">
+
+<style>
+  :root {
+    --bg:       #f5f7fa;
+    --surface:  #ffffff;
+    --border:   #e2e8f0;
+    --text:     #1a1a1a;
+    --muted:    #64748b;
+    --accent:   #1d4ed8;
+    --danger:   #dc2626;
+    --warn:     #d97706;
+    --ok:       #15803d;
+    --ended:    #94a3b8;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100dvh;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* ── Header ── */
+  header {
+    background: var(--text);
+    color: #fff;
+    padding: 16px 20px;
+    padding-top: calc(16px + env(safe-area-inset-top));
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+  }
+  header h1 { font-size: 17px; font-weight: 700; letter-spacing: -0.3px; }
+  header p  { font-size: 11px; opacity: 0.55; margin-top: 1px; }
+
+  .btn-refresh {
+    background: rgba(255,255,255,0.15);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .btn-refresh:active { opacity: 0.7; }
+  .btn-refresh.loading { opacity: 0.5; pointer-events: none; }
+
+  /* ── Meta strip ── */
+  .meta-strip {
+    font-size: 11px;
+    color: var(--muted);
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+
+  /* ── Card list ── */
+  .card-list { padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    text-decoration: none;
+    color: inherit;
+    display: block;
+    transition: transform 0.1s;
+  }
+  .card:active { transform: scale(0.985); }
+
+  .card-top {
+    padding: 14px 16px 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .card-title {
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.35;
+    flex: 1;
+  }
+
+  .badge {
+    flex-shrink: 0;
+    padding: 3px 9px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .badge-Klaravik  { background: #fef3c7; color: #92400e; }
+  .badge-Blinto    { background: #dbeafe; color: #1d4ed8; }
+  .badge-Junora    { background: #f3e8ff; color: #6d28d9; }
+  .badge-Maskinera { background: #dcfce7; color: #15803d; }
+  .badge-Other     { background: #f1f5f9; color: #64748b; }
+
+  .card-bottom {
+    border-top: 1px solid var(--border);
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .stat {
+    padding: 10px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .stat + .stat { border-left: 1px solid var(--border); }
+
+  .stat-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
+  .stat-value { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+  .time-danger { color: var(--danger); }
+  .time-warn   { color: var(--warn); }
+  .time-ok     { color: var(--ok); }
+  .time-ended  { color: var(--ended); font-style: italic; font-weight: 500; }
+  .time-pending{ color: #6366f1; font-style: italic; font-weight: 500; }
+
+  /* ── Empty / error states ── */
+  .state-msg {
+    text-align: center;
+    padding: 60px 24px;
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  /* ── Fetched-at footer ── */
+  .card-fetched {
+    font-size: 10px;
+    color: var(--muted);
+    padding: 0 16px 10px;
+  }
+
+  /* ── Refresh instructions banner ── */
+  .refresh-hint {
+    margin: 0 16px 4px;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 12px;
+    color: var(--accent);
+    line-height: 1.5;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Aramo Maskin</h1>
+    <p>Auktionsbevakning</p>
+  </div>
+  <button class="btn-refresh" id="btn-refresh" onclick="tryRefresh()">↻ Uppdatera</button>
+</header>
+
+<div class="meta-strip" id="meta-strip">Laddar auktioner…</div>
+
+<div id="content"></div>
+
+<script>
+// ── Data ─────────────────────────────────────────────────────────────────────
+
+async function loadData() {
+  try {
+    const res = await fetch('data.json?t=' + Date.now());
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return await res.json();
+  } catch (e) {
+    return null;
+  }
+}
+
+function detectPlatform(url) {
+  if (/klaravik/.test(url)) return 'Klaravik';
+  if (/blinto/.test(url))   return 'Blinto';
+  if (/junora/.test(url))   return 'Junora';
+  if (/maskinera/.test(url))return 'Maskinera';
+  return 'Other';
+}
+
+function countdown(iso) {
+  if (!iso) return { text: 'Hämtar…', cls: 'time-pending' };
+  const diff = new Date(iso) - Date.now();
+  if (diff <= 0) return { text: 'Avslutad', cls: 'time-ended' };
+  const d = Math.floor(diff / 86400000);
+  const h = Math.floor((diff % 86400000) / 3600000);
+  const m = Math.floor((diff % 3600000) / 60000);
+  const s = Math.floor((diff % 60000) / 1000);
+  if (diff < 7200000)  return { text: `${h}t ${m}m ${s}s`, cls: 'time-danger' };
+  if (diff < 86400000) return { text: `${h}t ${m}m`,        cls: 'time-warn'   };
+  return { text: `${d}d ${h}t ${m}m`, cls: 'time-ok' };
+}
+
+function fmtFetched(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return d.toLocaleDateString('sv-SE') + ' ' + d.toLocaleTimeString('sv-SE', { hour:'2-digit', minute:'2-digit' });
+}
+
+let currentData = null;
+
+function render(data) {
+  currentData = data;
+  const content = document.getElementById('content');
+  const meta = document.getElementById('meta-strip');
+
+  if (!data) {
+    meta.textContent = 'Kunde inte ladda data.';
+    content.innerHTML = `<div class="state-msg">Kontrollera din internetanslutning och försök igen.</div>`;
+    return;
+  }
+
+  const updated = data.updatedAt ? 'Senast uppdaterad: ' + fmtFetched(data.updatedAt) : 'Data saknar tidsstämpel';
+  meta.textContent = updated + ' · ' + (data.auctions?.length || 0) + ' auktioner';
+
+  if (!data.auctions?.length) {
+    content.innerHTML = `<div class="state-msg">Inga auktioner bevakas just nu.</div>`;
+    return;
+  }
+
+  const cards = data.auctions.map(item => {
+    const platform = item.platform || detectPlatform(item.url);
+    const ct = countdown(item.endsAtISO);
+    return `
+      <a class="card" href="${item.url}" target="_blank" rel="noopener">
+        <div class="card-top">
+          <span class="card-title">${item.title || 'Hämtar titel…'}</span>
+          <span class="badge badge-${platform}">${platform}</span>
+        </div>
+        <div class="card-bottom">
+          <div class="stat">
+            <span class="stat-label">Ledande bud</span>
+            <span class="stat-value">${item.currentBidText || '—'}</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">Avslutas om</span>
+            <span class="stat-value ${ct.cls}" data-ends="${item.endsAtISO || ''}">${ct.text}</span>
+          </div>
+        </div>
+        <div class="card-fetched">Hämtad ${fmtFetched(item.fetchedAt)}</div>
+      </a>`;
+  }).join('');
+
+  content.innerHTML = `<div class="refresh-hint">Klicka ↻ Uppdatera och be sedan Claude hämta nya bud i Cowork-chatten.</div><div class="card-list">${cards}</div>`;
+}
+
+setInterval(() => {
+  document.querySelectorAll('[data-ends]').forEach(el => {
+    const iso = el.dataset.ends;
+    if (!iso) return;
+    const ct = countdown(iso);
+    el.textContent = ct.text;
+    el.className = `stat-value ${ct.cls}`;
+  });
+}, 1000);
+
+function tryRefresh() {
+  const btn = document.getElementById('btn-refresh');
+  btn.classList.add('loading');
+  btn.textContent = '…';
+  loadData().then(data => {
+    render(data);
+    btn.classList.remove('loading');
+    btn.textContent = '↻ Uppdatera';
+  });
+}
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+
+loadData().then(render);
+</script>
+</body>
+</html>
