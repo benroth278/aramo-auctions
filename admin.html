@@ -11,7 +11,7 @@
   :root {
     --bg: #f5f7fa; --surface: #fff; --border: #e2e8f0;
     --text: #1a1a1a; --muted: #64748b; --accent: #1d4ed8;
-    --danger: #dc2626; --ok: #15803d;
+    --danger: #dc2626; --ok: #15803d; --warn: #d97706;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif; background: var(--bg); color: var(--text); min-height: 100dvh; padding-bottom: env(safe-area-inset-bottom); }
@@ -53,6 +53,22 @@
   .field:first-of-type { border-top: none; }
   .field label { display: block; font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; padding: 10px 16px 4px; }
   .field input, .field select { display: block; width: 100%; padding: 0 16px 12px; border: none; outline: none; background: transparent; font-size: 15px; color: var(--text); font-family: inherit; -webkit-appearance: none; }
+  .field input:disabled { color: var(--muted); }
+
+  /* URL row with fetch button */
+  .url-row { display: flex; align-items: stretch; border-top: 1px solid var(--border); }
+  .url-row input { flex: 1; padding: 12px 16px; border: none; outline: none; background: transparent; font-size: 15px; color: var(--text); font-family: inherit; min-width: 0; }
+  .btn-fetch { flex-shrink: 0; padding: 0 16px; border: none; border-left: 1px solid var(--border); background: transparent; font-size: 13px; font-weight: 600; color: var(--accent); cursor: pointer; font-family: inherit; white-space: nowrap; }
+  .btn-fetch:active { background: var(--bg); }
+  .btn-fetch:disabled { color: var(--muted); pointer-events: none; }
+
+  /* Fetch status */
+  .fetch-status { padding: 8px 16px 10px; font-size: 12px; display: none; }
+  .fetch-status.show { display: block; }
+  .fetch-status.loading { color: var(--muted); }
+  .fetch-status.ok      { color: var(--ok); }
+  .fetch-status.partial { color: var(--warn); }
+  .fetch-status.error   { color: var(--danger); }
 
   /* Buttons */
   .btn { display: block; width: 100%; padding: 14px; border: none; border-radius: 12px; font-size: 15px; font-weight: 600; cursor: pointer; font-family: inherit; text-align: center; }
@@ -65,7 +81,7 @@
   .main-wrap { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
 
   /* Auction rows */
-  .auction-item { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 0; }
+  .auction-item { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
   .auction-header { padding: 12px 16px 6px; display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
   .auction-title-text { font-size: 14px; font-weight: 600; line-height: 1.3; flex: 1; }
   .auction-meta { font-size: 12px; color: var(--muted); padding: 0 16px 10px; }
@@ -97,9 +113,15 @@
   }
   .toast.show { opacity: 1; }
   .toast.err { background: var(--danger); }
+
+  /* Override fields section - collapsible */
+  .override-toggle { padding: 10px 16px; font-size: 12px; color: var(--accent); cursor: pointer; border-top: 1px solid var(--border); background: none; border-left: none; border-right: none; border-bottom: none; width: 100%; text-align: left; font-family: inherit; }
+  .override-fields { display: none; }
+  .override-fields.open { display: block; }
 </style>
 </head>
 <body>
+
 
 <header>
   <div>
@@ -113,10 +135,10 @@
 <div class="screen active" id="screen-pin">
   <div class="pin-wrap">
     <div style="text-align:center">
-      <div class="pin-title" id="pin-title">Ange PIN</div>
-      <div class="pin-subtitle" id="pin-subtitle">Ange din 4-siffriga PIN-kod</div>
+      <div class="pin-title">Ange PIN</div>
+      <div class="pin-subtitle">Ange din 4-siffriga PIN-kod</div>
     </div>
-    <div class="pin-dots" id="pin-dots">
+    <div class="pin-dots">
       <div class="pin-dot" id="d0"></div>
       <div class="pin-dot" id="d1"></div>
       <div class="pin-dot" id="d2"></div>
@@ -140,10 +162,10 @@
   </div>
 </div>
 
-<!-- Setup (first run) -->
+<!-- Setup -->
 <div class="screen" id="screen-setup">
   <div class="setup-wrap">
-    <p style="font-size:14px;color:var(--muted);line-height:1.6">Välkommen! Ange din GitHub-token och välj en PIN-kod för att komma igång. Token sparas bara på den här enheten.</p>
+    <p style="font-size:14px;color:var(--muted);line-height:1.6">Täkkommen! Ange din GitHub-token och välj evt PIN-kod. Token sparas bara på den här enheten.</p>
     <div class="section">
       <div class="section-title">GitHub-token</div>
       <div class="field">
@@ -152,7 +174,7 @@
       </div>
     </div>
     <div class="section">
-      <div class="section-title">Välj PIN-kod</div>
+      <div class="section-title">V�vlj PIN-kod</div>
       <div class="field">
         <label>4-siffrig PIN</label>
         <input type="password" id="setup-pin" placeholder="••••" maxlength="4" inputmode="numeric" autocomplete="off">
@@ -169,34 +191,48 @@
     <!-- Add form -->
     <div class="section">
       <div class="section-title">Lägg till auktion</div>
-      <div class="field">
-        <label>URL</label>
-        <input type="url" id="add-url" placeholder="https://…" inputmode="url" autocomplete="off" oninput="onUrlInput()">
+
+      <!-- URL + fetch button -->
+      <div class="url-row">
+        <input type="url" id="add-url" placeholder="Klistra in URL…" inputmode="url" autocomplete="off"
+               oninput="onUrlInput()" onpaste="onUrlPaste()">
+        <button class="btn-fetch" id="btn-fetch" onclick="fetchAuction()">Hämta →</button>
       </div>
-      <div class="field">
-        <label>Titel</label>
-        <input type="text" id="add-title" placeholder="Maskinnamn">
+
+      <!-- Fetch status -->
+      <div class="fetch-status" id="fetch-status"></div>
+
+      <!-- Override fields (shown after fetch or manually) -->
+      <button class="override-toggle" id="override-toggle" onclick="toggleOverride()" style="display:none">
+        $✎ Redigera fält manuellt
+      </button>
+      <div class="override-fields" id="override-fields">
+        <div class="field">
+          <label>Titel</label>
+          <input type="text" id="add-title" placeholder="Maskinnamn">
+        </div>
+        <div class="field">
+          <label>Ledande bud</label>
+          <input type="text" id="add-bid" placeholder="t.ex. 2 500 kr">
+        </div>
+        <div class="field">
+          <label>Avslutas</label>
+          <input type="datetime-local" id="add-ends">
+        </div>
+        <div class="field">
+          <label>Plattform</label>
+          <select id="add-platform">
+            <option value="Junora">Junora</option>
+            <option value="Klaravik">Klaravik</option>
+            <option value="Blinto">Blinto</option>
+            <option value="Maskinera">Maskinera</option>
+            <option value="Other">Annan</option>
+          </select>
+        </div>
       </div>
-      <div class="field">
-        <label>Ledande bud</label>
-        <input type="text" id="add-bid" placeholder="t.ex. 2 500 kr" inputmode="text">
-      </div>
-      <div class="field">
-        <label>Avslutas</label>
-        <input type="datetime-local" id="add-ends">
-      </div>
-      <div class="field">
-        <label>Plattform</label>
-        <select id="add-platform">
-          <option value="Junora">Junora</option>
-          <option value="Klaravik">Klaravik</option>
-          <option value="Blinto">Blinto</option>
-          <option value="Maskinera">Maskinera</option>
-          <option value="Other">Annan</option>
-        </select>
-      </div>
+
       <div style="padding:12px 16px;">
-        <button class="btn btn-primary" id="btn-add" onclick="addAuction()">Lägg till</button>
+        <button class="btn btn-primary" id="btn-add" onclick="addAuction()" disabled>Lägg till</button>
       </div>
     </div>
 
@@ -219,7 +255,7 @@ const OWNER = 'benroth278';
 const REPO  = 'aramo-auctions';
 const FILE  = 'data.json';
 
-// ── Util ─────────────────────────────────────────────────────────────────────
+// ── Util ────────────────────────────────────────────────────────────────────
 
 const getToken = () => localStorage.getItem('aramo_token');
 const getPin   = () => localStorage.getItem('aramo_pin');
@@ -229,13 +265,13 @@ function show(id) {
   document.getElementById('screen-' + id).classList.add('active');
 }
 
-let _toastTimer;
+let _tt;
 function toast(msg, isErr = false) {
   const el = document.getElementById('toast');
   el.textContent = msg;
   el.className = 'toast show' + (isErr ? ' err' : '');
-  clearTimeout(_toastTimer);
-  _toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
+  clearTimeout(_tt);
+  _tt = setTimeout(() => el.classList.remove('show'), 2800);
 }
 
 function detectPlatform(url) {
@@ -262,14 +298,12 @@ function initPin() {
 
 function pinKey(k) {
   if (pinBuf.length >= 4) return;
-  pinBuf += k;
-  updateDots();
+  pinBuf += k; updateDots();
   if (pinBuf.length === 4) setTimeout(checkPin, 120);
 }
 
 function pinDel() {
-  pinBuf = pinBuf.slice(0, -1);
-  updateDots();
+  pinBuf = pinBuf.slice(0, -1); updateDots();
   document.getElementById('pin-error').textContent = '';
 }
 
@@ -280,9 +314,7 @@ function updateDots() {
 
 function checkPin() {
   if (pinBuf === getPin()) {
-    pinBuf = ''; updateDots();
-    show('main');
-    loadAuctions();
+    pinBuf = ''; updateDots(); show('main'); loadAuctions();
   } else {
     document.getElementById('pin-error').textContent = 'Fel PIN, försök igen';
     pinBuf = ''; updateDots();
@@ -298,8 +330,7 @@ function setupSave() {
   if (!/^\d{4}$/.test(pin)) { toast('PIN måste vara 4 siffror', true); return; }
   localStorage.setItem('aramo_token', token);
   localStorage.setItem('aramo_pin', pin);
-  show('main');
-  loadAuctions();
+  show('main'); loadAuctions();
 }
 
 function resetSettings() {
@@ -307,6 +338,180 @@ function resetSettings() {
   localStorage.removeItem('aramo_token');
   localStorage.removeItem('aramo_pin');
   location.reload();
+}
+
+// ── Auto-fetch from URL ───────────────────────────────────────────────────────
+
+let _pasteTimer;
+
+function onUrlInput() {
+  const url = document.getElementById('add-url').value.trim();
+  document.getElementById('add-platform').value = detectPlatform(url);
+}
+
+function onUrlPaste() {
+  clearTimeout(_pasteTimer);
+  _pasteTimer = setTimeout(() => {
+    const url = document.getElementById('add-url').value.trim();
+    if (url.startsWith('http')) fetchAuction();
+  }, 400);
+}
+
+function setFetchStatus(cls, msg) {
+  const el = document.getElementById('fetch-status');
+  el.className = 'fetch-status show ' + cls;
+  el.textContent = msg;
+}
+
+async function proxyFetch(url) {
+  const proxies = [
+    'https://api.allorigins.win/raw?url=' + encodeURIComponent(url),
+    'https://corsproxy.io/?' + encodeURIComponent(url),
+  ];
+  for (const p of proxies) {
+    try {
+      const res = await fetch(p, { signal: AbortSignal.timeout(12000) });
+      if (!res.ok) continue;
+      const text = await res.text();
+      if (text.length > 200) return text;
+    } catch {}
+  }
+  return null;
+}
+
+function parseHtml(html, url) {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+
+  // ── Title ──
+  let title =
+    doc.querySelector('meta[property="og:title"]')?.getAttribute('content') ||
+    doc.querySelector('meta[name="twitter:title"]')?.getAttribute('content') ||
+    doc.querySelector('h1')?.textContent?.trim() ||
+    doc.querySelector('title')?.textContent?.trim() || '';
+
+  // Strip site name suffixes like " | Junora", " - Klaravik"
+  title = title.replace(/\s*[-–|]\s*(Junora|Klaravik|Blinto|Maskinera|Mascus)[^]*$/i, '').trim();
+
+  // ── JSON-LD structured data ──
+  let bidText = null;
+  let endsAtISO = null;
+
+  for (const script of doc.querySelectorAll('script[type="application/ld+json"]')) {
+    try {
+      const items = [].concat(JSON.parse(script.textContent));
+      for (const d of items) {
+        // Price
+        if (d.offers?.price != null && !bidText) {
+          const num = parseFloat(d.offers.price);
+          if (!isNaN(num)) bidText = num.toLocaleString('sv-SE') + ' kr';
+        }
+        // End time
+        for (const key of ['endDate', 'validThrough', 'auctionEnd']) {
+          if (d[key] && !endsAtISO) endsAtISO = d[key];
+        }
+        // Nested
+        if (d.offers?.availabilityEnds && !endsAtISO) endsAtISO = d.offers.availabilityEnds;
+      }
+    } catch {}
+  }
+
+  // ── Platform-specific fallbacks ──
+  if (/junora/.test(url)) {
+    if (!bidText) {
+      const el = doc.querySelector('.price, [class*="price"], [class*="bid"], [class*="Price"]');
+      if (el) bidText = el.textContent.replace(/[^\d\s]/g, '').trim() + ' kr';
+    }
+    if (!endsAtISO) {
+      const el = doc.querySelector('time[datetime], [data-end], [class*="countdown"]');
+      if (el?.getAttribute('datetime')) endsAtISO = el.getAttribute('datetime');
+    }
+  }
+
+  if (/klaravik/.test(url)) {
+    if (!endsAtISO) {
+      const el = doc.querySelector('[data-end-at], [data-auction-end], time');
+      if (el?.getAttribute('datetime') || el?.getAttribute('data-end-at')) {
+        endsAtISO = el.getAttribute('datetime') || el.getAttribute('data-end-at');
+      }
+    }
+  }
+
+  return { title, bidText, endsAtISO };
+}
+
+async function fetchAuction() {
+  const url = document.getElementById('add-url').value.trim();
+  if (!url || !url.startsWith('http')) {
+    toast('Ange en giltig URL', true); return;
+  }
+
+  const fetchBtn = document.getElementById('btn-fetch');
+  fetchBtn.disabled = true;
+  fetchBtn.textContent = '…';
+  setFetchStatus('loading', 'Hämtar auktionsdata…');
+  document.getElementById('override-toggle').style.display = 'none';
+
+  const html = await proxyFetch(url);
+
+  fetchBtn.disabled = false;
+  fetchBtn.textContent = 'Hämta →';
+
+  if (!html) {
+    setFetchStatus('error', '✗ Kunde inte hämta sidan — fyll i fälten manuellt');
+    document.getElementById('override-toggle').style.display = 'block';
+    openOverride();
+    document.getElementById('btn-add').disabled = false;
+    return;
+  }
+
+  const { title, bidText, endsAtISO } = parseHtml(html, url);
+
+  // Pre-fill fields
+  if (title) document.getElementById('add-title').value = title;
+  if (bidText) document.getElementById('add-bid').value = bidText;
+  if (endsAtISO) {
+    // Convert to datetime-local format (YYYY-MM-DDTHH:MM)
+    try {
+      const d = new Date(endsAtISO);
+      const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000)
+        .toISOString().slice(0, 16);
+      document.getElementById('add-ends').value = local;
+    } catch {}
+  }
+  document.getElementById('add-platform').value = detectPlatform(url);
+
+  const found = [title && 'titel', bidText && 'bud', endsAtISO && 'sluttid'].filter(Boolean);
+  const missing = [!title && 'titel', !bidText && 'bud', !endsAtISO && 'sluttid'].filter(Boolean);
+
+  if (missing.length === 0) {
+    setFetchStatus('ok', '✓ Hittade titel, bud och sluttid');
+  } else if (found.length > 0) {
+    setFetchStatus('partial',
+      '⚠ Hittade ' + found.join(', ') + ' · Saknar ' + missing.join(', ') + ' — fyll i manuellt');
+    openOverride();
+  } else {
+    setFetchStatus('error', '✗ Ingen data hittades — fyll i fälten manuellt');
+    openOverride();
+  }
+
+  document.getElementById('override-toggle').style.display = 'block';
+  document.getElementById('btn-add').disabled = false;
+}
+
+function toggleOverride() {
+  const el = document.getElementById('override-fields');
+  const btn = document.getElementById('override-toggle');
+  if (el.classList.contains('open')) {
+    el.classList.remove('open');
+    btn.textContent = '✎ Redigera fält manuellt';
+  } else {
+    openOverride();
+  }
+}
+
+function openOverride() {
+  document.getElementById('override-fields').classList.add('open');
+  document.getElementById('override-toggle').textContent = '▲ Dölj fält';
 }
 
 // ── GitHub API ────────────────────────────────────────────────────────────────
@@ -317,34 +522,28 @@ async function fetchData() {
   });
   if (!res.ok) throw new Error('GitHub ' + res.status);
   const meta = await res.json();
-  const data = JSON.parse(atob(meta.content.replace(/\n/g, '')));
-  return { data, sha: meta.sha };
+  return { data: JSON.parse(atob(meta.content.replace(/\n/g, ''))), sha: meta.sha };
 }
 
 async function pushData(data, sha, message) {
-  const json = JSON.stringify(data, null, 2);
-  // UTF-8 safe base64
-  const content = btoa(unescape(encodeURIComponent(json)));
+  const content = btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2))));
   const res = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/contents/${FILE}`, {
     method: 'PUT',
     headers: { Authorization: `token ${getToken()}`, Accept: 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
     body: JSON.stringify({ message, content, sha })
   });
   if (!res.ok) throw new Error('GitHub ' + res.status);
-  const result = await res.json();
-  return result.content.sha; // return new SHA
+  return (await res.json()).content.sha;
 }
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
-let currentSha  = null;
-let currentData = null;
+let currentSha = null, currentData = null;
 
 async function loadAuctions() {
   try {
     const { data, sha } = await fetchData();
-    currentData = data;
-    currentSha  = sha;
+    currentData = data; currentSha = sha;
     renderAuctions();
   } catch (e) {
     document.getElementById('auction-list').innerHTML = `<div class="empty-state">Fel: ${e.message}</div>`;
@@ -352,12 +551,9 @@ async function loadAuctions() {
 }
 
 function renderAuctions() {
-  const list     = document.getElementById('auction-list');
+  const list = document.getElementById('auction-list');
   const auctions = currentData?.auctions || [];
-  if (!auctions.length) {
-    list.innerHTML = '<div class="empty-state">Inga auktioner</div>';
-    return;
-  }
+  if (!auctions.length) { list.innerHTML = '<div class="empty-state">Inga auktioner</div>'; return; }
   list.innerHTML = auctions.map((a, i) => {
     const p = a.platform || detectPlatform(a.url);
     return `
@@ -382,17 +578,11 @@ function renderAuctions() {
 
 async function updateBid(i) {
   const newBid = document.getElementById('bid-' + i).value.trim();
-  const title  = currentData.auctions[i].title;
   currentData.auctions[i].currentBidText = newBid;
   currentData.auctions[i].currentBidNum  = parseInt(newBid.replace(/\D/g, '')) || 0;
   currentData.updatedAt = new Date().toISOString();
-  try {
-    currentSha = await pushData(currentData, currentSha, `Update bid: ${title}`);
-    toast('Bud uppdaterat ✓');
-  } catch (e) {
-    toast('Fel: ' + e.message, true);
-    await loadAuctions(); // re-sync
-  }
+  try { currentSha = await pushData(currentData, currentSha, `Update bid: ${currentData.auctions[i].title}`); toast('Bud uppdaterat ✓'); }
+  catch (e) { toast('Fel: ' + e.message, true); await loadAuctions(); }
 }
 
 async function deleteAuction(i) {
@@ -400,19 +590,8 @@ async function deleteAuction(i) {
   if (!confirm(`Ta bort "${title}"?`)) return;
   currentData.auctions.splice(i, 1);
   currentData.updatedAt = new Date().toISOString();
-  try {
-    currentSha = await pushData(currentData, currentSha, `Remove: ${title}`);
-    renderAuctions();
-    toast('Borttagen ✓');
-  } catch (e) {
-    toast('Fel: ' + e.message, true);
-    await loadAuctions();
-  }
-}
-
-function onUrlInput() {
-  const url = document.getElementById('add-url').value;
-  document.getElementById('add-platform').value = detectPlatform(url);
+  try { currentSha = await pushData(currentData, currentSha, `Remove: ${title}`); renderAuctions(); toast('Borttagen ✓'); }
+  catch (e) { toast('Fel: ' + e.message, true); await loadAuctions(); }
 }
 
 async function addAuction() {
@@ -423,7 +602,7 @@ async function addAuction() {
   const platform = document.getElementById('add-platform').value;
 
   if (!url)   { toast('Ange en URL', true); return; }
-  if (!title) { toast('Ange en titel', true); return; }
+  if (!title) { toast('Titel saknas — fyll i manuellt', true); openOverride(); return; }
 
   const btn = document.getElementById('btn-add');
   btn.disabled = true; btn.textContent = 'Sparar…';
@@ -441,15 +620,24 @@ async function addAuction() {
 
   try {
     currentSha = await pushData(currentData, currentSha, `Add: ${title}`);
-    ['add-url','add-title','add-bid','add-ends'].forEach(id => document.getElementById(id).value = '');
+    // Reset form
+    document.getElementById('add-url').value = '';
+    document.getElementById('add-title').value = '';
+    document.getElementById('add-bid').value = '';
+    document.getElementById('add-ends').value = '';
+    document.getElementById('fetch-status').className = 'fetch-status';
+    document.getElementById('override-toggle').style.display = 'none';
+    document.getElementById('override-fields').classList.remove('open');
+    btn.disabled = true;
     renderAuctions();
     toast('Auktion tillagd ✓');
   } catch (e) {
-    currentData.auctions.pop(); // roll back
+    currentData.auctions.pop();
     toast('Fel: ' + e.message, true);
+    btn.disabled = false;
   }
 
-  btn.disabled = false; btn.textContent = 'Lägg till';
+  btn.textContent = 'Lägg till';
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
