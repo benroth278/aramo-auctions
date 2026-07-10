@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-07-08T16:00:00Z",
+  "updatedAt": "2026-07-10T21:14:59.390Z",
   "auctions": [
     {
       "url": "https://junora.se/products/rundbalsgrip-quicke-flexigrip",
@@ -12,7 +12,7 @@
     },
     {
       "url": "https://www.klaravik.se/auktion/produkt/3246077-va-skopa-srf-700-mm-med-s45-faste/",
-      "title": "VA-Skopa SRF 700 mm med S45 fäste",
+      "title": "VA-Skopa SRF 700 mm med S45 fÃ¤ste",
       "platform": "Klaravik",
       "currentBidText": "100 SEK",
       "currentBidNum": 100,
@@ -21,7 +21,7 @@
     },
     {
       "url": "https://www.blinto.se/auction/Gremo-704T-268984-196198/",
-      "title": "Gremo 704T — Skotare (reparationsobjekt)",
+      "title": "Gremo 704T â Skotare (reparationsobjekt)",
       "platform": "Blinto",
       "currentBidText": "27 000 SEK",
       "currentBidNum": 27000,
@@ -30,7 +30,7 @@
     },
     {
       "url": "https://www.maskinera.se/auktioner/produkt/gravmaskin-komatsu-pc-130-000012735",
-      "title": "Grävmaskin Komatsu PC 130",
+      "title": "GrÃ¤vmaskin Komatsu PC 130",
       "platform": "Maskinera",
       "currentBidText": "0 kr",
       "currentBidNum": 0,
@@ -39,12 +39,21 @@
     },
     {
       "url": "https://junora.se/products/traktor-international-844-axl-med-alo-quicke-3360-ws-lastare",
-      "title": "Traktor – International 844 AXL med Ålö Quicke 3360 WS lastare",
+      "title": "Traktor â International 844 AXL med ÃlÃ¶ Quicke 3360 WS lastare",
       "platform": "Junora",
       "currentBidText": "9 000 kr",
       "currentBidNum": 9000,
       "endsAtISO": "2026-07-13T07:13:46.934Z",
       "fetchedAt": "2026-07-08T13:30:00Z"
+    },
+    {
+      "url": "https://www.blinto.se/auction/MASSEY-FERGUSON-MF-699-4-269462-196886/",
+      "title": "Traktor med lastare MASSEY FERGUSON MF 699 4",
+      "platform": "Blinto",
+      "currentBidText": "5 000 kr",
+      "currentBidNum": 5000,
+      "endsAtISO": "2026-07-29T11:01:00+02:00",
+      "fetchedAt": "2026-07-10T21:14:59.374Z"
     }
   ]
 }
