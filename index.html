@@ -190,14 +190,27 @@
 // ── Data ─────────────────────────────────────────────────────────────────────
 
 async function loadData() {
+  // Fetch via GitHub Contents API — bypasses GitHub Pages CDN cache
   try {
-    const res = await fetch('data.json?t=' + Date.now());
-    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const res = await fetch(
+      'https://api.github.com/repos/benroth278/aramo-auctions/contents/data.json',
+      { headers: { Accept: 'application/vnd.github.v3.raw' }, cache: 'no-store' }
+    );
+    if (!res.ok) throw new Error('API ' + res.status);
     return await res.json();
-  } catch (e) {
-    return null;
+  } catch (_) {
+    // Fallback: relative path with cache-busting
+    try {
+      const res = await fetch('data.json?t=' + Date.now(), { cache: 'no-store' });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return await res.json();
+    } catch (e) {
+      return null;
+    }
   }
 }
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
 function detectPlatform(url) {
   if (/klaravik/.test(url)) return 'Klaravik';
@@ -226,12 +239,14 @@ function fmtFetched(iso) {
   return d.toLocaleDateString('sv-SE') + ' ' + d.toLocaleTimeString('sv-SE', { hour:'2-digit', minute:'2-digit' });
 }
 
+// ── Render ───────────────────────────────────────────────────────────────────
+
 let currentData = null;
 
 function render(data) {
   currentData = data;
   const content = document.getElementById('content');
-  const meta = document.getElementById('meta-strip');
+  const meta    = document.getElementById('meta-strip');
 
   if (!data) {
     meta.textContent = 'Kunde inte ladda data.';
@@ -239,7 +254,9 @@ function render(data) {
     return;
   }
 
-  const updated = data.updatedAt ? 'Senast uppdaterad: ' + fmtFetched(data.updatedAt) : 'Data saknar tidsstämpel';
+  const updated = data.updatedAt
+    ? 'Senast uppdaterad: ' + fmtFetched(data.updatedAt)
+    : 'Data saknar tidsstämpel';
   meta.textContent = updated + ' · ' + (data.auctions?.length || 0) + ' auktioner';
 
   if (!data.auctions?.length) {
@@ -270,8 +287,14 @@ function render(data) {
       </a>`;
   }).join('');
 
-  content.innerHTML = `<div class="refresh-hint">Klicka ↻ Uppdatera och be sedan Claude hämta nya bud i Cowork-chatten.</div><div class="card-list">${cards}</div>`;
+  content.innerHTML = `
+    <div class="refresh-hint">
+      Klicka ↻ Uppdatera och be sedan Claude hämta nya bud i Cowork-chatten.
+    </div>
+    <div class="card-list">${cards}</div>`;
 }
+
+// ── Countdown tick ────────────────────────────────────────────────────────────
 
 setInterval(() => {
   document.querySelectorAll('[data-ends]').forEach(el => {
@@ -282,6 +305,8 @@ setInterval(() => {
     el.className = `stat-value ${ct.cls}`;
   });
 }, 1000);
+
+// ── Refresh ───────────────────────────────────────────────────────────────────
 
 function tryRefresh() {
   const btn = document.getElementById('btn-refresh');
@@ -294,9 +319,13 @@ function tryRefresh() {
   });
 }
 
+// ── Service Worker ────────────────────────────────────────────────────────────
+
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
 }
+
+// ── Init ──────────────────────────────────────────────────────────────────────
 
 loadData().then(render);
 </script>
