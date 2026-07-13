@@ -1,4 +1,4 @@
-const CACHE = 'aramo-v2';
+const CACHE = 'aramo-v3';
 const STATIC = [
   '/aramo-auctions/',
   '/aramo-auctions/index.html',
