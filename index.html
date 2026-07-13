@@ -170,6 +170,47 @@
     color: var(--accent);
     line-height: 1.5;
   }
+
+  /* ── Tab bar ── */
+  .tab-bar {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    padding: 0 16px;
+  }
+  .tab-btn {
+    flex: 1;
+    padding: 12px 8px;
+    border: none;
+    background: none;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .tab-btn.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+
+  /* ── Archive card ── */
+  .card.card-archived {
+    opacity: 0.75;
+  }
+  .card.card-archived .card-title {
+    color: var(--muted);
+  }
+  .ended-label {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--ended);
+    padding: 4px 16px 8px;
+  }
 </style>
 </head>
 <body>
@@ -183,6 +224,11 @@
 </header>
 
 <div class="meta-strip" id="meta-strip">Laddar auktioner…</div>
+
+<div class="tab-bar">
+  <button class="tab-btn active" id="tab-active" onclick="switchTab('active')">Aktiva</button>
+  <button class="tab-btn" id="tab-archive" onclick="switchTab('archive')">Arkiv</button>
+</div>
 
 <div id="content"></div>
 
@@ -242,56 +288,84 @@ function fmtFetched(iso) {
 // ── Render ───────────────────────────────────────────────────────────────────
 
 let currentData = null;
+let currentTab = 'active';
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.getElementById('tab-active').classList.toggle('active', tab === 'active');
+  document.getElementById('tab-archive').classList.toggle('active', tab === 'archive');
+  renderContent();
+}
+
+function cardHTML(item, archived = false) {
+  const platform = item.platform || detectPlatform(item.url);
+  const ct = archived ? { text: 'Avslutad', cls: 'time-ended' } : countdown(item.endsAtISO);
+  const endedDate = archived
+    ? new Date(item.endsAtISO).toLocaleDateString('sv-SE', { day:'numeric', month:'short', year:'numeric' })
+    : null;
+  return `
+    <a class="card${archived ? ' card-archived' : ''}" href="${item.url}" target="_blank" rel="noopener">
+      <div class="card-top">
+        <span class="card-title">${item.title || 'Hämtar titel…'}</span>
+        <span class="badge badge-${platform}">${platform}</span>
+      </div>
+      ${archived ? `<div class="ended-label">Avslutad ${endedDate}</div>` : ''}
+      <div class="card-bottom">
+        <div class="stat">
+          <span class="stat-label">${archived ? 'Slutbud' : 'Ledande bud'}</span>
+          <span class="stat-value">${item.finalBidText || item.currentBidText || '—'}</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">${archived ? 'Status' : 'Avslutas om'}</span>
+          <span class="stat-value ${ct.cls}" ${!archived ? `data-ends="${item.endsAtISO || ''}"` : ''}>${ct.text}</span>
+        </div>
+      </div>
+      <div class="card-fetched">Hämtad ${fmtFetched(item.fetchedAt)}</div>
+    </a>`;
+}
+
+function renderContent() {
+  const content = document.getElementById('content');
+  if (!currentData) return;
+
+  if (currentTab === 'active') {
+    if (!currentData.auctions?.length) {
+      content.innerHTML = `<div class="state-msg">Inga aktiva auktioner just nu.</div>`;
+      return;
+    }
+    const cards = currentData.auctions.map(item => cardHTML(item, false)).join('');
+    content.innerHTML = `
+      <div class="refresh-hint">
+        Klicka ↻ Uppdatera och be sedan Claude hämta nya bud i Cowork-chatten.
+      </div>
+      <div class="card-list">${cards}</div>`;
+  } else {
+    if (!currentData.archived?.length) {
+      content.innerHTML = `<div class="state-msg">Inga avslutade auktioner i arkivet.</div>`;
+      return;
+    }
+    const sorted = [...currentData.archived].sort((a,b) => new Date(b.endsAtISO) - new Date(a.endsAtISO));
+    const cards = sorted.map(item => cardHTML(item, true)).join('');
+    content.innerHTML = `<div class="card-list">${cards}</div>`;
+  }
+}
 
 function render(data) {
   currentData = data;
-  const content = document.getElementById('content');
-  const meta    = document.getElementById('meta-strip');
+  const meta = document.getElementById('meta-strip');
 
   if (!data) {
     meta.textContent = 'Kunde inte ladda data.';
-    content.innerHTML = `<div class="state-msg">Kontrollera din internetanslutning och försök igen.</div>`;
+    document.getElementById('content').innerHTML = `<div class="state-msg">Kontrollera din internetanslutning och försök igen.</div>`;
     return;
   }
 
   const updated = data.updatedAt
     ? 'Senast uppdaterad: ' + fmtFetched(data.updatedAt)
     : 'Data saknar tidsstämpel';
-  meta.textContent = updated + ' · ' + (data.auctions?.length || 0) + ' auktioner';
+  meta.textContent = updated + ' · ' + (data.auctions?.length || 0) + ' aktiva · ' + (data.archived?.length || 0) + ' i arkiv';
 
-  if (!data.auctions?.length) {
-    content.innerHTML = `<div class="state-msg">Inga auktioner bevakas just nu.</div>`;
-    return;
-  }
-
-  const cards = data.auctions.map(item => {
-    const platform = item.platform || detectPlatform(item.url);
-    const ct = countdown(item.endsAtISO);
-    return `
-      <a class="card" href="${item.url}" target="_blank" rel="noopener">
-        <div class="card-top">
-          <span class="card-title">${item.title || 'Hämtar titel…'}</span>
-          <span class="badge badge-${platform}">${platform}</span>
-        </div>
-        <div class="card-bottom">
-          <div class="stat">
-            <span class="stat-label">Ledande bud</span>
-            <span class="stat-value">${item.currentBidText || '—'}</span>
-          </div>
-          <div class="stat">
-            <span class="stat-label">Avslutas om</span>
-            <span class="stat-value ${ct.cls}" data-ends="${item.endsAtISO || ''}">${ct.text}</span>
-          </div>
-        </div>
-        <div class="card-fetched">Hämtad ${fmtFetched(item.fetchedAt)}</div>
-      </a>`;
-  }).join('');
-
-  content.innerHTML = `
-    <div class="refresh-hint">
-      Klicka ↻ Uppdatera och be sedan Claude hämta nya bud i Cowork-chatten.
-    </div>
-    <div class="card-list">${cards}</div>`;
+  renderContent();
 }
 
 // ── Countdown tick ────────────────────────────────────────────────────────────
