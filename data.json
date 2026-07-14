@@ -1,23 +1,23 @@
 {
-  "updatedAt": "2026-07-14T00:00:00Z",
+  "updatedAt": "2026-07-14T01:20:00Z",
   "auctions": [
     {
       "url": "https://www.klaravik.se/auktion/produkt/3246077-va-skopa-srf-700-mm-med-s45-faste/",
       "title": "VA-Skopa SRF 700 mm med S45 fäste",
       "platform": "Klaravik",
-      "currentBidText": "100 SEK",
-      "currentBidNum": 100,
+      "currentBidText": "2 900 SEK",
+      "currentBidNum": 2900,
       "endsAtISO": "2026-07-15T01:00:00Z",
-      "fetchedAt": "2026-07-08T13:05:00Z"
+      "fetchedAt": "2026-07-14T01:20:00Z"
     },
     {
       "url": "https://www.maskinera.se/auktioner/produkt/gravmaskin-komatsu-pc-130-000012735",
       "title": "Grävmaskin Komatsu PC 130",
       "platform": "Maskinera",
-      "currentBidText": "0 kr",
-      "currentBidNum": 0,
+      "currentBidText": "180 000 kr",
+      "currentBidNum": 180000,
       "endsAtISO": "2026-07-16T08:44:00.000Z",
-      "fetchedAt": "2026-07-08T13:20:00Z"
+      "fetchedAt": "2026-07-14T01:20:00Z"
     },
     {
       "url": "https://www.blinto.se/auction/Gremo-704T-268984-196198/",
@@ -26,7 +26,7 @@
       "currentBidText": "45 000 SEK",
       "currentBidNum": 45000,
       "endsAtISO": "2026-07-21T07:40:00Z",
-      "fetchedAt": "2026-07-13T12:00:00Z"
+      "fetchedAt": "2026-07-14T01:20:00Z"
     },
     {
       "url": "https://www.blinto.se/auction/Gremo-TT-12-C2-269497-196941/",
@@ -35,7 +35,16 @@
       "currentBidText": "23 000 SEK",
       "currentBidNum": 23000,
       "endsAtISO": "2026-07-21T08:20:00Z",
-      "fetchedAt": "2026-07-13T12:00:00Z"
+      "fetchedAt": "2026-07-14T01:20:00Z"
+    },
+    {
+      "url": "https://www.blinto.se/auction/MASSEY-FERGUSON-MF-699-4-269462-196886/",
+      "title": "Traktor med lastare MASSEY FERGUSON MF 699 4",
+      "platform": "Blinto",
+      "currentBidText": "17 000 SEK",
+      "currentBidNum": 17000,
+      "endsAtISO": "2026-07-29T11:01:00+02:00",
+      "fetchedAt": "2026-07-14T01:20:00Z"
     }
   ],
   "archived": [
